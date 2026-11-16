@@ -1,0 +1,66 @@
+// Reglas de seguridad de Firestore para Handyman Apps
+// Versión: 2.0 — 2026
+//
+// IMPORTANTE: El Admin SDK (backend) siempre tiene acceso total y omite estas reglas.
+// Estas reglas SOLO aplican a accesos directos del cliente (SDK de Firebase en la app).
+//
+// Principio general: el cliente NUNCA debe escribir directamente a Firestore;
+// todo pasa por el backend FastAPI. Por eso la mayoría de escrituras están bloqueadas.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COLECCIÓN: users/{uid}
+    // ─────────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+
+      // Un usuario autenticado solo puede LEER su propio documento
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // BLOQUEAR toda escritura directa del cliente al documento de usuario.
+      // - Campos como 'identidadVerificada' y 'rol' solo se modifican desde el backend.
+      allow write: if false;
+
+      // ── Subcolección biometria (embeddings faciales) ─────────────────
+      // Completamente bloqueada para el cliente. Solo el Admin SDK puede leer/escribir.
+      match /biometria/{docId} {
+        allow read, write: if false;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COLECCIÓN: servicios/{servicioId}
+    // ─────────────────────────────────────────────────────────────────────
+    match /servicios/{servicioId} {
+
+      // Cualquier usuario autenticado puede LEER servicios
+      allow read: if request.auth != null;
+
+      // BLOQUEAR toda escritura directa (se hace a través del backend)
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COLECCIÓN: solicitudes/{solicitudId}
+    // ─────────────────────────────────────────────────────────────────────
+    match /solicitudes/{solicitudId} {
+
+      // Solo pueden leer el cliente o handyman involucrados
+      allow read: if request.auth != null &&
+                     (resource.data.clienteId == request.auth.uid ||
+                      resource.data.handymanId == request.auth.uid);
+
+      // BLOQUEAR toda escritura directa (se hace a través del backend)
+      allow write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BLOQUEAR todo lo demás por defecto
+    // ─────────────────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

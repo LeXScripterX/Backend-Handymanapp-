@@ -1,0 +1,9 @@
+# Dependencias de Machine Learning para reconocimiento facial
+# Requieren Python 3.11 o 3.12 (NO compatibles con 3.14)
+# Instalar en un venv separado:
+#   python3.11 -m venv .venv-ml
+#   source .venv-ml/bin/activate
+#   pip install -r requirements_ml.txt
+
+deepface
+tf-keras
