@@ -4,7 +4,7 @@ Router de usuarios: registro de perfil, consulta y actualización de perfil en F
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from firebase_admin import auth, firestore
-
+from app.dependencies import usuario_autenticado # Asegúrate de tener este import arriba
 from app.config import settings
 from app.dependencies import token_valido, usuario_actual
 from app.firebase import db
@@ -113,27 +113,29 @@ def crear_cuenta(data: CuentaIn):
     )
 
 
-@router.post("/registro", status_code=201, response_model=RegistroOut)
-def registro(data: RegistroIn, decoded=Depends(token_valido)):
+@router.post("/registro")
+def registro(data: RegistroIn, user: dict = Depends(usuario_autenticado)):
     """
     Crea el perfil del usuario en Firestore después de autenticarse en Firebase Auth.
     El rol 'admin' no puede autoasignarse.
     """
-    ref = db.collection("users").document(decoded["uid"])
+    # 1. Verificar si el perfil ya existe
+    ref = db.collection("users").document(user["uid"])
     if ref.get().exists:
         raise HTTPException(409, "El perfil ya existe")
 
+    # 2. Crear el perfil usando los datos del token de Google y los del formulario
     _guardar_perfil(
-        decoded["uid"],
+        uid=user["uid"],
         nombre=data.nombre,
-        email=decoded.get("email", ""),
+        email=user.get("email", ""), # El email viene del token
         telefono=data.telefono,
         rol=data.rol,
         terminos_aceptados=data.terminosAceptados,
-        foto_url=data.fotoUrl or decoded.get("picture"),
+        foto_url=data.fotoUrl or user.get("picture"), # La foto puede venir del token o del form
     )
-    return RegistroOut(ok=True, uid=decoded["uid"], rol=data.rol)
-
+    
+    return {"ok": True, "mensaje": "Perfil creado exitosamente"}
 
 @router.get("/perfil", response_model=PerfilOut)
 def ver_perfil(user=Depends(usuario_actual)):

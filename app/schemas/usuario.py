@@ -86,8 +86,18 @@ class CuentaOut(BaseModel):
     aviso: Optional[str] = None
 
 
+from pydantic import BaseModel, ConfigDict
+from typing import Optional
+
 class PerfilUpdateIn(BaseModel):
     """Datos para editar información personal o disponibilidad del usuario."""
+
+    # AQUÍ FALTABAN LOS CAMPOS:
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+    disponible: Optional[bool] = None
+    experienciaAnos: Optional[float] = None
+    fotoUrl: Optional[str] = None
 
     model_config = ConfigDict(
         json_schema_extra={
